@@ -16,9 +16,11 @@ public class EmpregadoService {
     private UndoRedoService undoRedoService;
     private final AgendaRepository agendaRepository;
 
-    public EmpregadoService(Map<String, Empregado> empregados) {
+    public EmpregadoService(Map<String, Empregado> empregados, Collection<String> agendasPersonalizadas) {
         this.empregados = empregados;
         this.agendaRepository = new AgendaRepository();
+        agendaRepository.registrarPersonalizadas(agendasPersonalizadas);
+        registrarAgendasExistentes();
         for (Empregado e : this.empregados.values()) {
             atribuirAgendaSeNecessario(e);
         }
@@ -35,9 +37,21 @@ public class EmpregadoService {
     public AgendaRepository getAgendaRepository() {
         return agendaRepository;
     }
-    void setEmpregados(Map<String, Empregado> novos) {
+
+    public Set<String> getAgendasPersonalizadas() {
+        return agendaRepository.getDescricoesPersonalizadas();
+    }
+
+    public void criarAgendaDePagamentos(String descricao) throws Exception {
+        agendaRepository.criarAgenda(descricao);
+    }
+
+    void setEmpregados(Map<String, Empregado> novos, Collection<String> agendasPersonalizadas) {
 
         this.empregados = novos;
+        agendaRepository.reset();
+        agendaRepository.registrarPersonalizadas(agendasPersonalizadas);
+        registrarAgendasExistentes();
         for (Empregado e : this.empregados.values()) {
             atribuirAgendaSeNecessario(e);
         }
@@ -45,6 +59,7 @@ public class EmpregadoService {
 
     public void clear() {
         empregados.clear();
+        agendaRepository.reset();
     }
 
 // sem comissão
@@ -512,6 +527,12 @@ public class EmpregadoService {
             }
         }
         return format(total);
+    }
+
+    private void registrarAgendasExistentes() {
+        for (Empregado e : this.empregados.values()) {
+            agendaRepository.registrarExistente(e.getAgendaPagamento());
+        }
     }
 
     private void atribuirAgendaPadrao(Empregado e) {

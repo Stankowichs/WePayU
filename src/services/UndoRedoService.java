@@ -24,12 +24,13 @@ public class UndoRedoService {
         st.empregados = empregadoService.deepCopyEmpregados();
         st.folhasProcessadas = new HashMap<>(folhaPagamentoService.getFolhasProcessadas());
         st.totaisProcessados = new HashMap<>(folhaPagamentoService.getTotaisProcessados());
+        st.agendasPersonalizadas = new LinkedHashSet<>(empregadoService.getAgendasPersonalizadas());
         return st;
     }
 
 // restaura um estado previamente salvo
     public void restore(Estado st) {
-        empregadoService.setEmpregados(st.empregados);
+        empregadoService.setEmpregados(st.empregados, st.agendasPersonalizadas);
         folhaPagamentoService.setFolhasProcessadas(st.folhasProcessadas);
         folhaPagamentoService.setTotaisProcessados(st.totaisProcessados);
     }
@@ -67,5 +68,6 @@ public class UndoRedoService {
         Map<String, Empregado> empregados;
         Map<String, String> folhasProcessadas;
         Map<String, Double> totaisProcessados;
+        Set<String> agendasPersonalizadas;
     }
 }

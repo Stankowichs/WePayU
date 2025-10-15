@@ -51,11 +51,19 @@ public class AgendaPagamento {
                 return true;
             }
             long dias = java.time.temporal.ChronoUnit.DAYS.between(ultimoPagamento, data);
-            long intervalo = frequenciaSemanas * 7L;
-            if (dias < intervalo) {
+            if (dias <= 0) {
                 return false;
             }
-            return dias % intervalo == 0;
+            int offset = diaSemana.getValue() - ultimoPagamento.getDayOfWeek().getValue();
+            if (offset <= 0) {
+                offset += 7;
+            }
+            if (dias < offset) {
+                return false;
+            }
+            long ocorrencias = 1 + (dias - offset) / 7;
+            int freq = Math.max(frequenciaSemanas, 1);
+            return ocorrencias % freq == 0;
         }
         return matchesMensal(data);
     }
@@ -116,9 +124,6 @@ public class AgendaPagamento {
             dia = mes.lengthOfMonth();
         }
         base = mes.atDay(dia);
-        while (isFinalDeSemana(base)) {
-            base = base.minusDays(1);
-        }
         return base;
     }
 

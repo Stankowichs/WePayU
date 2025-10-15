@@ -9,8 +9,6 @@ import services.UndoRedoService;
 import services.LoadSaveService;
 
 import java.io.File;
-import java.util.Map;
-
 public class Facade {
     private final EmpregadoService empregadoService;
     private final FolhaPagamentoService folhaPagamentoService;
@@ -20,8 +18,8 @@ public class Facade {
 
     public Facade() {
         loadSaveService = new LoadSaveService();
-        Map<String, Empregado> emps = loadSaveService.load();
-        empregadoService = new EmpregadoService(emps);
+        LoadSaveService.Result dados = loadSaveService.load();
+        empregadoService = new EmpregadoService(dados.getEmpregados(), dados.getAgendasPersonalizadas());
         folhaPagamentoService = new FolhaPagamentoService(empregadoService);
         undoRedoService = new UndoRedoService(empregadoService, folhaPagamentoService);
         empregadoService.setUndoRedoService(undoRedoService);
@@ -37,6 +35,10 @@ public class Facade {
             f.delete();
         }
         undoRedoService.pushUndo(estado);
+    }
+
+    public void criarAgendaDePagamentos(String descricao) throws Exception {
+        empregadoService.criarAgendaDePagamentos(descricao);
     }
 
 // sem comissão
@@ -136,7 +138,7 @@ public class Facade {
     }
 
     public void encerrarSistema() throws Exception {
-        loadSaveService.save(empregadoService.getEmpregados());
+        loadSaveService.save(empregadoService.getEmpregados(), empregadoService.getAgendasPersonalizadas());
         encerrado = true;
         undoRedoService.clear();
     }
