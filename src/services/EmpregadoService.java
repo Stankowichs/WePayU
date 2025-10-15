@@ -14,9 +14,14 @@ import java.util.concurrent.ThreadLocalRandom;
 public class EmpregadoService {
     private Map<String, Empregado> empregados;
     private UndoRedoService undoRedoService;
+    private final AgendaRepository agendaRepository;
 
     public EmpregadoService(Map<String, Empregado> empregados) {
         this.empregados = empregados;
+        this.agendaRepository = new AgendaRepository();
+        for (Empregado e : this.empregados.values()) {
+            atribuirAgendaSeNecessario(e);
+        }
     }
 
     public void setUndoRedoService(UndoRedoService s) {
@@ -26,9 +31,16 @@ public class EmpregadoService {
     public Map<String, Empregado> getEmpregados() {
         return empregados;
     }
+
+    public AgendaRepository getAgendaRepository() {
+        return agendaRepository;
+    }
     void setEmpregados(Map<String, Empregado> novos) {
 
         this.empregados = novos;
+        for (Empregado e : this.empregados.values()) {
+            atribuirAgendaSeNecessario(e);
+        }
     }
 
     public void clear() {
@@ -83,6 +95,7 @@ public class EmpregadoService {
         }
         e.setMetodoPagamento(new EmMaos());
         e.setDataUltimoPagamento("31/12/2004");
+        atribuirAgendaPadrao(e);
         UndoRedoService.Estado estado = undoRedoService.snapshot();
         empregados.put(id, e);
         undoRedoService.pushUndo(estado);
@@ -135,6 +148,9 @@ public class EmpregadoService {
                     throw new EmpregadoNaoEhSindicalizadoException();
                 }
                 return format(e.getSindicato().getTaxaSindical());
+            case "agendaPagamento":
+                atribuirAgendaSeNecessario(e);
+                return e.getAgendaPagamento();
             default:
                 throw new AtributoNaoExisteException();
         }
@@ -188,6 +204,8 @@ public class EmpregadoService {
                 novo.setMetodoPagamento(e.getMetodoPagamento());
                 novo.setSindicato(e.getSindicato());
                 novo.setDataUltimoPagamento(e.getDataUltimoPagamento());
+                novo.setAgendaPagamento(e.getAgendaPagamento());
+                atribuirAgendaSeNecessario(novo);
                 empregados.put(emp, novo);
                 break;
             case "salario":
@@ -217,6 +235,10 @@ public class EmpregadoService {
                 } else {
                     throw new MetodoDePagamentoInvalidoException();
                 }
+                break;
+            case "agendaPagamento":
+                String novaAgenda = agendaRepository.getDescricaoCanonica(valor);
+                e.setAgendaPagamento(novaAgenda);
                 break;
             case "banco":
             case "agencia":
@@ -333,6 +355,8 @@ public class EmpregadoService {
         novo.setMetodoPagamento(e.getMetodoPagamento());
         novo.setSindicato(e.getSindicato());
         novo.setDataUltimoPagamento(e.getDataUltimoPagamento());
+        novo.setAgendaPagamento(e.getAgendaPagamento());
+        atribuirAgendaSeNecessario(novo);
         empregados.put(emp, novo);
         undoRedoService.pushUndo(estado);
     }
@@ -488,6 +512,17 @@ public class EmpregadoService {
             }
         }
         return format(total);
+    }
+
+    private void atribuirAgendaPadrao(Empregado e) {
+        e.setAgendaPagamento(agendaRepository.getAgendaPadrao(e));
+    }
+
+    private void atribuirAgendaSeNecessario(Empregado e) {
+        if (e.getAgendaPagamento() == null || e.getAgendaPagamento().trim().isEmpty()
+                || !agendaRepository.existeAgenda(e.getAgendaPagamento())) {
+            atribuirAgendaPadrao(e);
+        }
     }
 
     private void validarTexto(String valor, Exception ex) throws Exception {

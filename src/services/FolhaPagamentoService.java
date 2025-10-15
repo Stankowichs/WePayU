@@ -7,7 +7,6 @@ import br.ufal.ic.p2.wepayu.models.metodospagamento.*;
 
 import java.io.File;
 import java.io.PrintWriter;
-import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -17,9 +16,11 @@ public class FolhaPagamentoService {
     private Map<String, Double> totaisProcessados = new HashMap<>();
     private final EmpregadoService empregadoService;
     private UndoRedoService undoRedoService;
+    private final AgendaRepository agendaRepository;
 
     public FolhaPagamentoService(EmpregadoService empregadoService) {
         this.empregadoService = empregadoService;
+        this.agendaRepository = empregadoService.getAgendaRepository();
     }
 
 // define serviço de undo redo para registrar processamento
@@ -103,14 +104,15 @@ public class FolhaPagamentoService {
         horistas.sort(Comparator.comparing(Empregado::getNome));
         for (Horista h : horistas) {
             LocalDate last = getUltimoPagamento(h);
-            long dias = java.time.temporal.ChronoUnit.DAYS.between(last, data);
-            if (data.getDayOfWeek() != java.time.DayOfWeek.FRIDAY || dias < 7) {
+            AgendaPagamento agenda = agendaRepository.getAgenda(h.getAgendaPagamento());
+            if (!agenda.isPayday(data, last)) {
                 continue;
             }
+            LocalDate anchor = agenda.anchor(data, last);
             double horasNormais = 0, horasExtras = 0;
             for (CartaoDePonto c : h.getCartoesPonto()) {
                 LocalDate cd = empregadoService.parseData(c.getData(), new DataInvalidaException());
-                if (cd.isAfter(last) && !cd.isAfter(data)) {
+                if (cd.isAfter(anchor) && !cd.isAfter(data)) {
                     double htot = c.getHoras();
                     horasNormais += Math.min(8.0, htot);
                     if (htot > 8.0) horasExtras += htot - 8.0;
@@ -120,7 +122,7 @@ public class FolhaPagamentoService {
             bruto = round2(bruto);
             double descontos = 0;
             if (bruto > 0) {
-                descontos = calcularDescontos(h, last, data, efetiva);
+                descontos = calcularDescontos(h, anchor, data, efetiva);
                 if (descontos > bruto) descontos = bruto;
                 descontos = round2(descontos);
             }
@@ -176,17 +178,17 @@ public class FolhaPagamentoService {
             }
         }
         assas.sort(Comparator.comparing(Empregado::getNome));
-        boolean ultimoUtil = isUltimoDiaUtil(data);
         for (Assalariado a : assas) {
             LocalDate last = getUltimoPagamento(a);
-            long dias = java.time.temporal.ChronoUnit.DAYS.between(last, data);
-            if (!ultimoUtil || dias < 1) {
+            AgendaPagamento agenda = agendaRepository.getAgenda(a.getAgendaPagamento());
+            if (!agenda.isPayday(data, last)) {
                 continue;
             }
-            double bruto = round2(a.getSalario());
+            LocalDate anchor = agenda.anchor(data, last);
+            double bruto = round2(calcularValorFixo(a.getSalario(), agenda));
             double descontos = 0;
             if (bruto > 0) {
-                descontos = calcularDescontos(a, last, data, efetiva);
+                descontos = calcularDescontos(a, anchor, data, efetiva);
                 if (descontos > bruto) descontos = bruto;
                 descontos = round2(descontos);
             }
@@ -241,23 +243,24 @@ public class FolhaPagamentoService {
         coms.sort(Comparator.comparing(Empregado::getNome));
         for (Comissionado c : coms) {
             LocalDate last = getUltimoPagamento(c);
-            long dias = java.time.temporal.ChronoUnit.DAYS.between(last, data);
-            if (data.getDayOfWeek() != DayOfWeek.FRIDAY || dias < 14) {
+            AgendaPagamento agenda = agendaRepository.getAgenda(c.getAgendaPagamento());
+            if (!agenda.isPayday(data, last)) {
                 continue;
             }
+            LocalDate anchor = agenda.anchor(data, last);
             double vendas = 0;
             for (ResultadoDeVenda v : c.getVendas()) {
                 LocalDate vd = empregadoService.parseData(v.getData(), new DataInvalidaException());
-                if (vd.isAfter(last) && !vd.isAfter(data)) {
+                if (vd.isAfter(anchor) && !vd.isAfter(data)) {
                     vendas += v.getValor();
                 }
             }
             double comis = round2(vendas * c.getComissao());
-            double fixo = round2(c.getSalario() * 6.0 / 13.0);
+            double fixo = round2(calcularValorFixo(c.getSalario(), agenda));
             double bruto = round2(fixo + comis + 1e-9);
             double descontos = 0;
             if (bruto > 0) {
-                descontos = calcularDescontos(c, last, data, efetiva);
+                descontos = calcularDescontos(c, anchor, data, efetiva);
                 if (descontos > bruto) descontos = bruto;
                 descontos = round2(descontos);
             }
@@ -349,12 +352,13 @@ public class FolhaPagamentoService {
         return "Em maos";
     }
 
-    private boolean isUltimoDiaUtil(LocalDate d) {
-        LocalDate ultimo = d.with(java.time.temporal.TemporalAdjusters.lastDayOfMonth());
-        while (ultimo.getDayOfWeek() == DayOfWeek.SATURDAY || ultimo.getDayOfWeek() == DayOfWeek.SUNDAY) {
-            ultimo = ultimo.minusDays(1);
+    private double calcularValorFixo(double salarioMensal, AgendaPagamento agenda) {
+        if (agenda.getTipo() == AgendaPagamento.Tipo.MENSAL) {
+            return salarioMensal;
         }
-        return d.equals(ultimo);
+        int frequencia = Math.max(agenda.getFrequenciaSemanas(), 1);
+        double periodosPorAno = 52.0 / frequencia;
+        return salarioMensal * 12.0 / periodosPorAno;
     }
 
     private String formatDate(LocalDate d) {

@@ -13,6 +13,7 @@ public abstract class Empregado implements Serializable {
     private MetodoPagamento metodoPagamento;
     private MembroSindicato sindicato;
     private String dataUltimoPagamento;
+    private String agendaPagamento;
 
     public Empregado() {
     }
@@ -68,6 +69,14 @@ public abstract class Empregado implements Serializable {
 
     public void setDataUltimoPagamento(String dataUltimoPagamento) {
         this.dataUltimoPagamento = dataUltimoPagamento;
+    }
+
+    public String getAgendaPagamento() {
+        return agendaPagamento;
+    }
+
+    public void setAgendaPagamento(String agendaPagamento) {
+        this.agendaPagamento = agendaPagamento;
     }
 
     public abstract String getTipo();
