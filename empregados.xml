@@ -11,7 +11,7 @@
   </void>
   <void property="empregados">
    <void method="put">
-    <string>655955</string>
+    <string>797365</string>
     <object class="br.ufal.ic.p2.wepayu.models.empregado.Horista">
      <void property="agendaPagamento">
       <string>mensal 1</string>
@@ -23,7 +23,7 @@
       <string>Rua dos Jooes, 333 - Campina Grande</string>
      </void>
      <void property="id">
-      <string>655955</string>
+      <string>797365</string>
      </void>
      <void property="metodoPagamento">
       <object class="br.ufal.ic.p2.wepayu.models.metodospagamento.EmMaos"/>

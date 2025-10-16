@@ -122,7 +122,7 @@ public class FolhaPagamentoService {
             bruto = round2(bruto);
             double descontos = 0;
             if (bruto > 0) {
-                descontos = calcularDescontos(h, anchor, data, efetiva);
+                descontos = calcularDescontos(h, last, data, efetiva);
                 if (descontos > bruto) descontos = bruto;
                 descontos = round2(descontos);
             }
@@ -188,7 +188,7 @@ public class FolhaPagamentoService {
             double bruto = round2(calcularValorFixo(a.getSalario(), agenda));
             double descontos = 0;
             if (bruto > 0) {
-                descontos = calcularDescontos(a, anchor, data, efetiva);
+                descontos = calcularDescontos(a, last, data, efetiva);
                 if (descontos > bruto) descontos = bruto;
                 descontos = round2(descontos);
             }
@@ -260,7 +260,7 @@ public class FolhaPagamentoService {
             double bruto = round2(fixo + comis + 1e-9);
             double descontos = 0;
             if (bruto > 0) {
-                descontos = calcularDescontos(c, anchor, data, efetiva);
+                descontos = calcularDescontos(c, last, data, efetiva);
                 if (descontos > bruto) descontos = bruto;
                 descontos = round2(descontos);
             }
